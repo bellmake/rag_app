@@ -12,6 +12,27 @@ from langchain_core.prompts import load_prompt
 
 from typing import Optional, List
 from base import BaseChain
+import time
+from langchain.callbacks.base import BaseCallbackHandler
+from langchain.callbacks.manager import CallbackManager
+
+
+class TokenSpeedCallbackHandler(BaseCallbackHandler):
+    def __init__(self):
+        self.start_time = time.time()
+        self.token_count = 0
+
+    def on_llm_new_token(self, token: str, **kwargs) -> None:
+        self.token_count += 1
+        elapsed = time.time() - self.start_time
+        if elapsed > 0:
+            tokens_per_sec = self.token_count / elapsed
+            print(f"토큰 속도: {tokens_per_sec:.2f} tokens/s")
+
+# CallbackManager에 등록합니다.
+callback_handler = TokenSpeedCallbackHandler()
+callback_manager = CallbackManager([callback_handler])
+
 
 # def format_docs(docs):
 #     return "\n\n".join(
@@ -214,7 +235,13 @@ class RagChatChain(BaseChain):
         # prompt = load_prompt("prompts/rag-llama2-13b.yaml", encoding="utf-8")
         # llm = ChatOllama(model="llama2:13b", temperature=0)
         prompt = load_prompt("prompts/rag-llama.yaml", encoding="utf-8")
-        llm = ChatOllama(model="exaone3.5:32b", temperature=0)
+        # llm = ChatOllama(model="exaone3.5:32b", temperature=0)
+        llm = ChatOllama(
+            model="exaone3.5:32b",
+            temperature=0,
+            callback_manager=callback_manager,  # 콜백 매니저 전달
+            streaming=True  # 스트리밍 모드 활성화
+)
 
         # 6) 포맷팅 함수 (검색된 문서 chunk를 모델에 넘길 때)
         def format_docs(docs):
