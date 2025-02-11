@@ -41,7 +41,8 @@ def format_docs(docs):
 class RagChain(BaseChain):
     def __init__(
         self,
-        model: str = "llama2-13b",  # 기본 모델 이름을 llama2-13b로 변경
+        # model: str = "llama2:13b",
+        model: str = "llama3.1:70b",       
         temperature: float = 0.3,
         system_prompt: Optional[str] = None,
         **kwargs,
@@ -92,11 +93,12 @@ class RagChain(BaseChain):
         retriever = vectorstore.as_retriever()
         
         # 프롬프트 로드 (프롬프트 파일을 rag-llama2-13b.yaml로 변경)
-        prompt = load_prompt("prompts/rag-llama2-13b.yaml", encoding="utf-8")
+        prompt = load_prompt("prompts/rag-llama.yaml", encoding="utf-8")
         
         # Ollama 모델 지정 (모델명을 llama2-13b로 변경)
         llm = ChatOllama(
-            model="llama2-13b",
+            # model="llama2:13b",
+            model="llama3.1:70b",
             temperature=0,
         )
         

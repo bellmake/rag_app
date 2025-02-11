@@ -48,7 +48,6 @@ add_routes(app, TopicChain().create(), path="/topic")
 # file_path 파라미터 필요: 문서 경로를 지정합니다.
 add_routes(
     app,
-    # RagChain(file_path="data/SPRI_AI_Brief_2023년12월호_F.pdf").create(),
     RagChain(file_path="data/AUTOSAR_AP_EXP_PlatformDesign.pdf").create(),
     path="/rag",
 )

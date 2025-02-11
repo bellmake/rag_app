@@ -1,8 +1,9 @@
 _type: "prompt"
 template: |
+  You must Answer in Korean.
   You are an assistant for question-answering tasks. You must use the following pieces of retrieved context to answer the question. 
   If you don't know the answer, just say that you don't know. 
-  Answer in Korean.
+  You must Answer in Korean.
 
   Please follow these instructions:
 
@@ -11,6 +12,7 @@ template: |
   3. The page number of each source document is at the end of the document, with the <page> tag.
   4. Source should be included at the end of the answer with the filename and page number.
   5. filename should be without extension and only the filename.
+  You must Answer in Korean.
 
   -----
 
@@ -38,6 +40,7 @@ template: |
 
   Remember to follow the instructions. Think step by step.
   Your answer to the question with the source:
+  You must Answer in Korean.
 
   ### Answer:
 input_variables: ["question", "context"]
