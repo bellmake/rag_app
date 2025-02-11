@@ -46,11 +46,20 @@ add_routes(app, TopicChain().create(), path="/topic")
 
 # RAG 체인 추가
 # file_path 파라미터 필요: 문서 경로를 지정합니다.
+# add_routes(
+#     app,
+#     RagChain(file_path="data/AUTOSAR_AP_EXP_PlatformDesign.pdf").create(),
+#     path="/rag",
+# )
 add_routes(
     app,
-    RagChain(file_path="data/AUTOSAR_AP_EXP_PlatformDesign.pdf").create(),
+    RagChain(file_paths=[
+        "data/AUTOSAR_AP_EXP_PlatformDesign.pdf",
+        "data/AUTOSAR_AP_SWS_UpdateAndConfigurationManagement.pdf",
+    ]).create(),
     path="/rag",
 )
+
 
 ########### 대화형 인터페이스 ###########
 
@@ -68,10 +77,21 @@ class InputChat(BaseModel):
 # LangSmith를 사용하는 경우, 경로에 enable_feedback_endpoint=True 을 설정하여 각 메시지 뒤에 엄지척 버튼을 활성화하고
 # enable_public_trace_link_endpoint=True 을 설정하여 실행에 대한 공개 추적을 생성하는 버튼을 추가할 수도 있습니다.
 # LangSmith 관련 환경 변수를 설정해야 합니다(.env)
+# add_routes(
+#     app,
+#     # ChatChain().create().with_types(input_type=InputChat),
+#     RagChatChain(file_path="data/AUTOSAR_AP_EXP_PlatformDesign.pdf").create().with_types(input_type=InputChat),
+#     path="/chat",
+#     enable_feedback_endpoint=True,
+#     enable_public_trace_link_endpoint=True,
+#     playground_type="chat",
+# )
 add_routes(
     app,
-    # ChatChain().create().with_types(input_type=InputChat),
-    RagChatChain(file_path="data/AUTOSAR_AP_EXP_PlatformDesign.pdf").create().with_types(input_type=InputChat),
+    RagChatChain(file_paths=[
+        "data/AUTOSAR_AP_EXP_PlatformDesign.pdf",
+        "data/AUTOSAR_AP_SWS_UpdateAndConfigurationManagement.pdf",
+    ]).create().with_types(input_type=InputChat),
     path="/chat",
     enable_feedback_endpoint=True,
     enable_public_trace_link_endpoint=True,

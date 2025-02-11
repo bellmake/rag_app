@@ -162,24 +162,33 @@ class RagChatChain(BaseChain):
             system_prompt
             or "You are a helpful AI Assistant. You must Answer in Korean. Your name is '선율'. You must answer in Korean."
         )
-        # file_path가 kwargs로 들어왔는지 확인
-        if "file_path" in kwargs:
-            self.file_path = kwargs["file_path"]
+        # kwargs로부터 file_paths를 받아 처리 (단일 파일이 아닌 리스트 형태)
+        if "file_paths" in kwargs:
+            self.file_paths = kwargs.pop("file_paths")
+        elif "file_path" in kwargs:
+            self.file_paths = [kwargs.pop("file_path")]
         else:
-            raise ValueError("file_path is required")
+            raise ValueError("file_path(s) is required")
 
         # Vectorstore 미리 None 초기화
         self.vectorstore = None
     
     def setup(self):
-        if not self.file_path:
-            raise ValueError("file_path is required")
+        if not self.file_paths:     
+            raise ValueError("file_paths is required")
         
         print("RagChatChain setup")
 
         # 1) PDF 로딩 (LangChain의 PDFPlumberLoader 사용)
-        loader = PDFPlumberLoader(self.file_path)
-        raw_docs = loader.load()
+        raw_docs = []
+        # 여러 PDF 파일을 순회하며 로드
+        for file_path in self.file_paths:
+            loader = PDFPlumberLoader(file_path)
+            docs_from_file = loader.load()
+            # 각 문서에 원본 파일 정보를 추가할 수 있습니다.
+            for doc in docs_from_file:
+                doc.metadata["source_file"] = file_path
+            raw_docs.extend(docs_from_file)
 
         # 2) 페이지 번호 메타데이터 설정
         #    (LangChain의 PDFPlumberLoader가 page_number를 넣어줄 수도 있지만,
