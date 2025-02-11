@@ -151,8 +151,8 @@ class Translator(BaseChain):
 class RagChatChain(BaseChain):
     def __init__(
         self,
-        # model: str = "llama2:13b",
-        model: str = "llama3.1:70b",
+        model: str = "llama2:13b",
+        # model: str = "llama3.1:70b",
         temperature: float = 0.3,
         system_prompt: Optional[str] = None,
         **kwargs,
@@ -205,7 +205,8 @@ class RagChatChain(BaseChain):
         # prompt = load_prompt("prompts/rag-llama2-13b.yaml", encoding="utf-8")
         # llm = ChatOllama(model="llama2:13b", temperature=0)
         prompt = load_prompt("prompts/rag-llama.yaml", encoding="utf-8")
-        llm = ChatOllama(model="llama3.1:70b", temperature=0)
+        llm = ChatOllama(model="llama2:13b", temperature=0)
+        # llm = ChatOllama(model="llama3.1:70b", temperature=0)
 
         # 6) 포맷팅 함수 (검색된 문서 chunk를 모델에 넘길 때)
         def format_docs(docs):

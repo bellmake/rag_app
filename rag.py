@@ -41,8 +41,8 @@ def format_docs(docs):
 class RagChain(BaseChain):
     def __init__(
         self,
-        # model: str = "llama2:13b",
-        model: str = "llama3.1:70b",       
+        model: str = "llama2:13b",
+        # model: str = "llama3.1:70b",       
         temperature: float = 0.3,
         system_prompt: Optional[str] = None,
         **kwargs,
@@ -97,8 +97,8 @@ class RagChain(BaseChain):
         
         # Ollama 모델 지정 (모델명을 llama2-13b로 변경)
         llm = ChatOllama(
-            # model="llama2:13b",
-            model="llama3.1:70b",
+            model="llama2:13b",
+            # model="llama3.1:70b",
             temperature=0,
         )
         
