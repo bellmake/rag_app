@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from typing import List, Union
@@ -30,9 +30,25 @@ app.add_middleware(
 
 
 # 기본 경로("/")에 대한 리다이렉션 처리
-@app.get("/")
-async def redirect_root_to_docs():
-    return RedirectResponse("/chat/playground")
+@app.get("/", response_class=HTMLResponse)
+async def root_with_welcome():
+    welcome = RagChain(file_paths=[
+        "data/AUTOSAR_AP_EXP_PlatformDesign.pdf",
+        "data/AUTOSAR_AP_SWS_UpdateAndConfigurationManagement.pdf",
+    ]).get_welcome_message()
+    # 간단한 HTML로 환영 메시지와 playground로 이동 버튼 제공
+    return f"""
+    <html>
+        <head>
+            <meta charset='utf-8'>
+            <title>선율RAG 환영</title>
+        </head>
+        <body style='font-family:sans-serif;text-align:center;margin-top:10em;'>
+            <h2>{welcome}</h2>
+            <a href='/chat/playground' style='display:inline-block;margin-top:2em;padding:1em 2em;background:#0078d4;color:white;text-decoration:none;border-radius:8px;font-size:1.2em;'>채팅 시작하기</a>
+        </body>
+    </html>
+    """
 
 
 # translate 체인 추가
@@ -97,6 +113,15 @@ add_routes(
     enable_public_trace_link_endpoint=True,
     playground_type="chat",
 )
+
+# 최초 접속 환영 메시지 엔드포인트 추가
+@app.get("/chat/welcome")
+async def chat_welcome():
+    welcome = RagChain(file_paths=[
+        "data/AUTOSAR_AP_EXP_PlatformDesign.pdf",
+        "data/AUTOSAR_AP_SWS_UpdateAndConfigurationManagement.pdf",
+    ]).get_welcome_message()
+    return {"message": welcome}
 
 
 # 서버 실행 설정
