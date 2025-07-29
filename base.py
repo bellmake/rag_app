@@ -7,7 +7,7 @@ class BaseChain(ABC):
         model (str): 사용할 LLM 모델명
         temperature (float): LLM temperature 값
     """
-    def __init__(self, model: str = "exaone", temperature: float = 0, **kwargs):
+    def __init__(self, model: str = "exaone-deep:32b", temperature: float = 0, **kwargs):
         self.model = model
         self.temperature = temperature
         self.kwargs = kwargs

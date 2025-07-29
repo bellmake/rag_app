@@ -11,6 +11,8 @@ from chains import ChatChain, TopicChain, LLM, Translator, RagChatChain
 from rag import RagChain
 
 from dotenv import load_dotenv
+import glob
+from pathlib import Path
 
 load_dotenv()
 
@@ -28,14 +30,34 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+# R24-11 AP 폴더 내 모든 PDF 파일 경로 수집
+def get_rag_pdfs():
+    # 1) server.py가 어디에 있든, 프로젝트 루트(즉 data 폴더가 있는 곳)를 찾는다.
+    current = Path(__file__).resolve()
+    while not (current / "data").exists():
+        if current.parent == current:
+            # 루트까지 올라갔는데도 data 폴더가 없으면 에러
+            raise RuntimeError("프로젝트 루트에서 'data' 폴더를 찾을 수 없습니다.")
+        current = current.parent
+
+    # 2) 루트 기준으로 PDF 폴더 경로 조합
+    # total data 폴더 경로
+    # pdf_dir = current / "data" / "R24-11" / "AP"
+    # minimum data 폴더 경로
+    pdf_dir = current / "data" / "minimum"
+
+    # 3) glob으로 PDF 목록 수집
+    pdfs = sorted(pdf_dir.glob("*.pdf"))
+    if not pdfs:
+        raise ValueError(f"No PDF files found in {pdf_dir}")
+    # 4) 문자열 리스트로 반환
+    return [str(p) for p in pdfs]
+
 
 # 기본 경로("/")에 대한 리다이렉션 처리
 @app.get("/", response_class=HTMLResponse)
 async def root_with_welcome():
-    welcome = RagChain(file_paths=[
-        "data/AUTOSAR_AP_EXP_PlatformDesign.pdf",
-        "data/AUTOSAR_AP_SWS_UpdateAndConfigurationManagement.pdf",
-    ]).get_welcome_message()
+    welcome = RagChain(file_paths=get_rag_pdfs()).get_welcome_message()
     # 간단한 HTML로 환영 메시지와 playground로 이동 버튼 제공
     return f"""
     <html>
@@ -61,18 +83,9 @@ add_routes(app, LLM().create(), path="/llm")
 add_routes(app, TopicChain().create(), path="/topic")
 
 # RAG 체인 추가
-# file_path 파라미터 필요: 문서 경로를 지정합니다.
-# add_routes(
-#     app,
-#     RagChain(file_path="data/AUTOSAR_AP_EXP_PlatformDesign.pdf").create(),
-#     path="/rag",
-# )
 add_routes(
     app,
-    RagChain(file_paths=[
-        "data/AUTOSAR_AP_EXP_PlatformDesign.pdf",
-        "data/AUTOSAR_AP_SWS_UpdateAndConfigurationManagement.pdf",
-    ]).create(),
+    RagChain(file_paths=get_rag_pdfs()).create(),
     path="/rag",
 )
 
@@ -104,10 +117,7 @@ class InputChat(BaseModel):
 # )
 add_routes(
     app,
-    RagChatChain(file_paths=[
-        "data/AUTOSAR_AP_EXP_PlatformDesign.pdf",
-        "data/AUTOSAR_AP_SWS_UpdateAndConfigurationManagement.pdf",
-    ]).create().with_types(input_type=InputChat),
+    RagChatChain(file_paths=get_rag_pdfs()).create().with_types(input_type=InputChat),
     path="/chat",
     enable_feedback_endpoint=True,
     enable_public_trace_link_endpoint=True,
@@ -117,10 +127,7 @@ add_routes(
 # 최초 접속 환영 메시지 엔드포인트 추가
 @app.get("/chat/welcome")
 async def chat_welcome():
-    welcome = RagChain(file_paths=[
-        "data/AUTOSAR_AP_EXP_PlatformDesign.pdf",
-        "data/AUTOSAR_AP_SWS_UpdateAndConfigurationManagement.pdf",
-    ]).get_welcome_message()
+    welcome = RagChain(file_paths=get_rag_pdfs()).get_welcome_message()
     return {"message": welcome}
 
 

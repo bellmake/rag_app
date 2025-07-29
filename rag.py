@@ -39,7 +39,7 @@ class RagChain(BaseChain):
     """
     def __init__(
         self,
-        model: str = "exaone3.5:32b",
+        model: str = "exaone-deep:32b",
         temperature: float = 0.3,
         system_prompt: Optional[str] = None,
         **kwargs,
@@ -63,7 +63,6 @@ class RagChain(BaseChain):
     def setup(self):
         if not self.file_paths:
             raise ValueError("file_path(s) is required")
-        
         print("RagChain setup")
 
         # 1) PDF 로딩 (여러 파일을 모두 읽어서 raw_docs에 합치기)
@@ -107,8 +106,8 @@ class RagChain(BaseChain):
         
         # 8) Ollama 모델 생성
         llm = ChatOllama(
-            model="exaone3.5:32b",
-            temperature=0,
+            model=self.model,
+            temperature=self.temperature,
         )
         
         # 9) 사용자 질문으로부터 관련 문서 검색 후 QA 요청 데이터 생성

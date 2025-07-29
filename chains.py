@@ -53,7 +53,7 @@ class TopicChain(BaseChain):
     """
     주어진 주제에 대해 설명하는 체인
     """
-    def __init__(self, model: str = "exaone", temperature: float = 0, system_prompt: Optional[str] = None, **kwargs):
+    def __init__(self, model: str = "exaone-deep:32b", temperature: float = 0, system_prompt: Optional[str] = None, **kwargs):
         super().__init__(model, temperature, **kwargs)
         self.system_prompt = system_prompt or "You are a helpful assistant. Your mission is to explain given topic in a concise manner. Answer in Korean."
     def setup(self):
@@ -68,7 +68,7 @@ class ChatChain(BaseChain):
     """
     대화형 체인
     """
-    def __init__(self, model: str = "exaone", temperature: float = 0.3, system_prompt: Optional[str] = None, **kwargs):
+    def __init__(self, model: str = "exaone-deep:32b", temperature: float = 0.3, system_prompt: Optional[str] = None, **kwargs):
         super().__init__(model, temperature, **kwargs)
         self.system_prompt = system_prompt or "You are a helpful AI Assistant. Your name is '선율'. You must answer in Korean."
     def setup(self):
@@ -90,7 +90,7 @@ class Translator(BaseChain):
     """
     번역 체인 (한국어 번역)
     """
-    def __init__(self, model: str = "exaone", temperature: float = 0, system_prompt: Optional[str] = None, **kwargs):
+    def __init__(self, model: str = "exaone-deep:32b", temperature: float = 0, system_prompt: Optional[str] = None, **kwargs):
         super().__init__(model, temperature, **kwargs)
         self.system_prompt = system_prompt or "You are a helpful assistant. Your mission is to translate given sentences into Korean."
     def setup(self):
@@ -105,7 +105,7 @@ class RagChatChain(BaseChain):
     """
     RAG 기반 대화형 체인
     """
-    def __init__(self, model: str = "exaone3.5:32b", temperature: float = 0.3, system_prompt: Optional[str] = None, **kwargs):
+    def __init__(self, model: str = "exaone-deep:32b", temperature: float = 0.3, system_prompt: Optional[str] = None, **kwargs):
         super().__init__(model, temperature, **kwargs)
         self.system_prompt = system_prompt or "You are a helpful AI Assistant. You must Answer in Korean. Your name is '선율'."
         if "file_paths" in kwargs:
@@ -133,8 +133,8 @@ class RagChatChain(BaseChain):
         self.vectorstore = FAISS.from_documents(docs, embedding=embeddings)
         prompt = load_prompt("prompts/rag-llama.yaml", encoding="utf-8")
         llm = ChatOllama(
-            model="exaone3.5:32b",
-            temperature=0,
+            model=self.model,
+            temperature=self.temperature,
             callback_manager=callback_manager,
             streaming=True
         )
