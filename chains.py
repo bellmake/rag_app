@@ -13,6 +13,7 @@ from langchain.callbacks.base import BaseCallbackHandler
 from langchain.callbacks.manager import CallbackManager
 from pathlib import Path
 from typing import Optional, List
+from langchain_core.prompts import ChatPromptTemplate
 
 # 공통 문서 포맷터
 def format_docs(docs):
@@ -41,7 +42,7 @@ class TokenSpeedCallbackHandler(BaseCallbackHandler):
         self.start_time = time.time()
         self.token_count = 0
     def on_llm_new_token(self, token: str, **kwargs) -> None:
-        self.token_count += 1
+        self.token_count = 1
         elapsed = time.time() - self.start_time
         if elapsed > 0:
             tokens_per_sec = self.token_count / elapsed
@@ -108,7 +109,8 @@ class RagChatChain(BaseChain):
     """
     def __init__(self, model: str = "exaone-deep:32b", temperature: float = 0.3, system_prompt: Optional[str] = None, **kwargs):
         super().__init__(model, temperature, **kwargs)
-        self.system_prompt = "You are a helpful AI Assistant. Always answer in Korean. Your name is '선율'."
+        # self.system_prompt = "You are a Automotive Software Expert. Always answer in Korean. Your name is '선율'."
+        self.system_prompt = "너는 차량 소프트웨어 분야 전문가야. 언제나 너의 생각과 답변 모두 반드시 항상 한글로 답해주고, 마지막에 출처 문서와 페이지 번호를 반드시 알려줘."
         if "file_paths" in kwargs:
             self.file_paths = kwargs.pop("file_paths")
         elif "file_path" in kwargs:
@@ -151,7 +153,13 @@ class RagChatChain(BaseChain):
             self.vectorstore = FAISS.from_documents(docs, embedding=embeddings)
             cache_dir.mkdir(parents=True, exist_ok=True)
             self.vectorstore.save_local(str(cache_dir))
-        prompt = load_prompt("prompts/rag-llama.yaml", encoding="utf-8")
+        # prompt = load_prompt("prompts/rag-llama.yaml", encoding="utf-8")
+        # 1) 시스템 프롬프트를 직접 주입하는 PromptTemplate
+        prompt = ChatPromptTemplate.from_messages([
+           ("system", self.system_prompt),
+           ("user",   "Context:\n{context}\n\nQuestion:\n{question}")
+        ])
+
         llm = ChatOllama(
             model=self.model,
             temperature=self.temperature,
