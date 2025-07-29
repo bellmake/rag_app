@@ -7,9 +7,10 @@ from langchain_community.vectorstores.faiss import FAISS
 from langchain_core.prompts import load_prompt
 from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_core.messages import HumanMessage
+from pathlib import Path
+import hashlib
 
 from base import BaseChain
-
 
 # 공통 문서 포맷터
 def format_docs(docs):
@@ -65,52 +66,44 @@ class RagChain(BaseChain):
             raise ValueError("file_path(s) is required")
         print("RagChain setup")
 
-        # 1) PDF 로딩 (여러 파일을 모두 읽어서 raw_docs에 합치기)
+        # PDF 로딩 및 분할
         raw_docs = []
         for file_path in self.file_paths:
             loader = PDFPlumberLoader(file_path)
             docs_from_file = loader.load()
-            # 각 문서에 원본 파일 정보 추가 (출처 정보)
             for i, doc in enumerate(docs_from_file):
                 doc.metadata["page_number"] = doc.metadata.get("page_number", i + 1)
                 doc.metadata["source_file"] = file_path
             raw_docs.extend(docs_from_file)
-
-        # 2) (선택 사항) 전체 문서에 대해 페이지 번호를 재설정할 수도 있지만,
-        #    원본 페이지 번호를 유지하고 싶다면 생략하거나 파일별로 따로 관리할 수 있습니다.
-        # 아래 코드는 전체 문서 리스트에서 번호가 누락된 경우에만 부여합니다.
-        for i, doc in enumerate(raw_docs):
-            if "page_number" not in doc.metadata:
-                doc.metadata["page_number"] = i + 1
-
-        # 3) Text Splitter로 문서 chunk 분할
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
-            chunk_overlap=50,
-        )
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
         docs = text_splitter.split_documents(raw_docs)
-        # 각 chunk는 원본 문서의 metadata(예: page_number, source_file)를 그대로 유지함
 
-        # 4) 캐싱을 지원하는 임베딩 설정
+        # 파일 목록 해시 기반 캐시 디렉토리 설정
+        file_key = "|".join(sorted(self.file_paths))
+        cache_root = Path(__file__).parent.parent / "embedding_cache"
+        cache_id = hashlib.md5(file_key.encode()).hexdigest()
+        faiss_dir = cache_root / cache_id
+        faiss_dir.mkdir(parents=True, exist_ok=True)
+
+        # 임베딩 생성 및 FAISS 인덱스 로드/생성
         EMBEDDING_MODEL = "bge-m3"
         embeddings = OllamaEmbeddings(model=EMBEDDING_MODEL)
-        
-        # 5) 벡터 DB 생성
-        vectorstore = FAISS.from_documents(docs, embedding=embeddings)
-        
-        # 6) 문서 검색기 설정
+        if any(faiss_dir.iterdir()):  # 디렉토리에 파일이 있으면 로드
+            vectorstore = FAISS.load_local(str(faiss_dir), embeddings, allow_dangerous_deserialization=True)
+        else:
+            vectorstore = FAISS.from_documents(docs, embedding=embeddings)
+            vectorstore.save_local(str(faiss_dir))
+
         retriever = vectorstore.as_retriever()
-        
-        # 7) 프롬프트 로드
+
+        # 프롬프트 및 LLM 설정
         prompt = load_prompt("prompts/rag-llama.yaml", encoding="utf-8")
-        
-        # 8) Ollama 모델 생성
         llm = ChatOllama(
             model=self.model,
             temperature=self.temperature,
         )
-        
-        # 9) 사용자 질문으로부터 관련 문서 검색 후 QA 요청 데이터 생성
+
+        # 메시지 결합 함수
         def combine_messages(input_dict):
             messages = input_dict["messages"]
             last_user_message = next(
@@ -123,12 +116,9 @@ class RagChain(BaseChain):
                     "context": format_docs(context_docs),
                 }
             else:
-                return {
-                    "question": "",
-                    "context": "",
-                }
+                return {"question": "", "context": ""}
 
-        # 10) 체인 생성
+        # 체인 구성
         chain = (
             RunnablePassthrough()
             | combine_messages
@@ -136,6 +126,4 @@ class RagChain(BaseChain):
             | llm
             | StrOutputParser()
         )
-        
         return chain
-

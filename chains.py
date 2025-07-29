@@ -1,3 +1,4 @@
+# app/chains.py
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, load_prompt
@@ -6,14 +7,14 @@ from langchain_community.document_loaders import PDFPlumberLoader
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.messages import HumanMessage
-from typing import Optional, List
 from base import BaseChain
 import time
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.callbacks.manager import CallbackManager
+from pathlib import Path
+from typing import Optional, List
 
 # 공통 문서 포맷터
-
 def format_docs(docs):
     formatted_docs = []
     for doc in docs:
@@ -115,10 +116,12 @@ class RagChatChain(BaseChain):
         else:
             raise ValueError("file_path(s) is required")
         self.vectorstore = None
+
     def setup(self):
         if not self.file_paths:
             raise ValueError("file_paths is required")
         print("RagChatChain setup")
+        # 문서 로딩 및 분할
         raw_docs = []
         for file_path in self.file_paths:
             loader = PDFPlumberLoader(file_path)
@@ -129,8 +132,25 @@ class RagChatChain(BaseChain):
             raw_docs.extend(docs_from_file)
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
         docs = text_splitter.split_documents(raw_docs)
+        # 캐시 가능한 임베딩 모델 설정 및 FAISS 인덱스 생성/로드
         embeddings = OllamaEmbeddings(model="bge-m3")
-        self.vectorstore = FAISS.from_documents(docs, embedding=embeddings)
+        cache_dir = Path.cwd() / "data" / "embedding_cache"
+        faiss_index = cache_dir / "index.faiss"
+        pkl_index = cache_dir / "index.pkl"
+        if faiss_index.exists() and pkl_index.exists():
+            # 캐시된 인덱스 로드
+            print(f"Loading cached FAISS index from {faiss_index}")
+            self.vectorstore = FAISS.load_local(
+                str(cache_dir),
+                embeddings,
+                allow_dangerous_deserialization=True
+            )
+        else:
+            print(f"Creating new FAISS index in {cache_dir}")
+            # 새 인덱스 생성 및 저장
+            self.vectorstore = FAISS.from_documents(docs, embedding=embeddings)
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            self.vectorstore.save_local(str(cache_dir))
         prompt = load_prompt("prompts/rag-llama.yaml", encoding="utf-8")
         llm = ChatOllama(
             model=self.model,
