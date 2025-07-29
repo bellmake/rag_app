@@ -108,7 +108,7 @@ class RagChatChain(BaseChain):
     """
     def __init__(self, model: str = "exaone-deep:32b", temperature: float = 0.3, system_prompt: Optional[str] = None, **kwargs):
         super().__init__(model, temperature, **kwargs)
-        self.system_prompt = system_prompt or "You are a helpful AI Assistant. You must Answer in Korean. Your name is '선율'."
+        self.system_prompt = "You are a helpful AI Assistant. Always answer in Korean. Your name is '선율'."
         if "file_paths" in kwargs:
             self.file_paths = kwargs.pop("file_paths")
         elif "file_path" in kwargs:
