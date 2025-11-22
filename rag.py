@@ -45,7 +45,7 @@ def get_welcome_message() -> str:
 #     """
 #     def __init__(
 #         self,
-#         model: str = "exaone-deep:32b",
+#         model: str = "exaone3.5:7.8b",
 #         temperature: float = 0.3,
 #         system_prompt: Optional[str] = None,
 #         **kwargs,

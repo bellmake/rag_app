@@ -5,7 +5,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, load
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PDFPlumberLoader
 from langchain_community.vectorstores.faiss import FAISS
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_core.messages import HumanMessage
 from base import BaseChain
 import time
@@ -14,6 +14,7 @@ from langchain.callbacks.manager import CallbackManager
 from pathlib import Path
 from typing import Optional, List
 from langchain_core.prompts import ChatPromptTemplate
+import re
 
 # 공통 문서 포맷터
 def format_docs(docs):
@@ -55,7 +56,7 @@ class TopicChain(BaseChain):
     """
     주어진 주제에 대해 설명하는 체인
     """
-    def __init__(self, model: str = "exaone-deep:32b", temperature: float = 0, system_prompt: Optional[str] = None, **kwargs):
+    def __init__(self, model: str = "exaone3.5:7.8b", temperature: float = 0, system_prompt: Optional[str] = None, **kwargs):
         super().__init__(model, temperature, **kwargs)
         self.system_prompt = system_prompt or "You are a helpful assistant. Your mission is to explain given topic in a concise manner. Answer in Korean."
     def setup(self):
@@ -70,7 +71,7 @@ class ChatChain(BaseChain):
     """
     대화형 체인
     """
-    def __init__(self, model: str = "exaone-deep:32b", temperature: float = 0.3, system_prompt: Optional[str] = None, **kwargs):
+    def __init__(self, model: str = "exaone3.5:7.8b", temperature: float = 0.3, system_prompt: Optional[str] = None, **kwargs):
         super().__init__(model, temperature, **kwargs)
         self.system_prompt = system_prompt or "You are a helpful AI Assistant. Your name is '선율'. You must answer in Korean."
     def setup(self):
@@ -92,7 +93,7 @@ class Translator(BaseChain):
     """
     번역 체인 (한국어 번역)
     """
-    def __init__(self, model: str = "exaone-deep:32b", temperature: float = 0, system_prompt: Optional[str] = None, **kwargs):
+    def __init__(self, model: str = "exaone3.5:7.8b", temperature: float = 0, system_prompt: Optional[str] = None, **kwargs):
         super().__init__(model, temperature, **kwargs)
         self.system_prompt = system_prompt or "You are a helpful assistant. Your mission is to translate given sentences into Korean."
     def setup(self):
@@ -107,10 +108,17 @@ class RagChatChain(BaseChain):
     """
     RAG 기반 대화형 체인
     """
-    def __init__(self, model: str = "exaone-deep:32b", temperature: float = 0.3, system_prompt: Optional[str] = None, **kwargs):
+    def __init__(self, model: str = "exaone3.5:7.8b", temperature: float = 0.3, system_prompt: Optional[str] = None, **kwargs):
         super().__init__(model, temperature, **kwargs)
-        # self.system_prompt = "You are a Automotive Software Expert. Always answer in Korean. Your name is '선율'."
-        self.system_prompt = "너는 차량 소프트웨어 분야 전문가야. 언제나 너의 생각과 답변 모두 반드시 항상 한글로 답해주고, 마지막에 출처 문서와 페이지 번호를 반드시 알려줘."
+        # 한국어 출력 강제 및 사고 과정 숨김
+        self.system_prompt = (
+            "너는 차량 소프트웨어 분야 전문가야. "
+            "반드시 100% 한국어로만 답해. 영어 문장이 섞이지 않도록 주의하고, "
+            "한국어가 아니라고 판단되면 즉시 한국어로 다시 작성해. "
+            "너의 생각 과정을 답하지 말고, 답변만 먼저 한글로 제시한 후 "
+            "출처 문서와 페이지 번호를 반드시 알려줘. "
+            "마지막으로 '===============' 로 문단을 구분한 다음에 너의 생각 과정을 추가로 달아줘."
+        )
         if "file_paths" in kwargs:
             self.file_paths = kwargs.pop("file_paths")
         elif "file_path" in kwargs:
@@ -177,5 +185,17 @@ class RagChatChain(BaseChain):
                 }
             else:
                 return {"question": "", "context": ""}
-        chain = RunnablePassthrough() | combine_messages | prompt | llm | StrOutputParser()
+        def remove_thought_tags(text: str) -> str:
+            # Strip <thought>...</thought> sections that some models prepend
+            cleaned = re.sub(r"<thought>.*?</thought>", "", text, flags=re.DOTALL)
+            return cleaned.strip()
+
+        chain = (
+            RunnablePassthrough()
+            | combine_messages
+            | prompt
+            | llm
+            | StrOutputParser()
+            | RunnableLambda(remove_thought_tags)
+        )
         return chain
